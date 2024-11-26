@@ -4,255 +4,437 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Repository Viewer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.0/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <style>
+        :root {
+            --bg-primary: #1e1e2e;
+            --bg-secondary: #0b0b0b;
+            --text-primary: #f0f0f3;
+            --text-secondary: #a0a0a5;
+            --accent-color: #3498db;
+            --hover-color: #4a4a5a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 20px;
-            background-color: #f9f9f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             display: flex;
+            height: 100vh;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
         }
+
+        /* Sidebar Styling */
         #sidebar {
-            width: 250px;
-            padding-right: 20px;
-            border-right: 1px solid #ddd;
+            width: 300px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid #333;
             overflow-y: auto;
-            max-height: 100vh;
-        }
-        #content {
-            flex-grow: 1;
-            padding-left: 20px;
-            overflow: auto;
-            max-height: 100vh;
-        }
-        a {
-            text-decoration: none;
-            color: #3498db;
-            cursor: pointer;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        ul {
-            list-style-type: none;
-            padding-left: 20px;
-        }
-        li {
-            margin-bottom: 5px;
-        }
-        .folder {
-            font-weight: bold;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-        #pdf-viewer {
-            width: 100%;
-            height: 800px;
-        }
-        #markdown-content {
-            max-width: 800px;
-            background-color: white;
             padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: width 0.3s ease;
         }
+
+        #sidebar.collapsed {
+            width: 60px;
+        }
+
+        #sidebar h2 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        #sidebar-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+        }
+
+        #file-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        #file-list li {
+            cursor: pointer;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s ease;
+        }
+
+        #file-list li:hover {
+            background-color: var(--hover-color);
+        }
+
+        #file-list li.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        #file-list li.folder {
+            font-weight: bold;
+            position: relative;
+        }
+
+        #file-list li .toggle {
+            margin-right: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
         #file-list ul {
+            margin-left: 20px;
             display: none;
         }
-        .folder.expanded > ul {
+
+        #file-list ul.active {
             display: block;
         }
-        .folder::before {
-            content: '▶ ';
-            display: inline-block;
-            margin-right: 5px;
-            transition: transform 0.2s;
+
+        /* Viewer Styling */
+        #viewer {
+            flex-grow: 1;
+            background-color: var(--bg-primary);
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
         }
-        .folder.expanded::before {
-            transform: rotate(90deg);
+
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--accent-color);
+            border-top: 5px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Markdown Styling */
+        .markdown {
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .markdown p {
+            margin-bottom: 1rem;
+        }
+
+        .markdown pre {
+            background-color: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+
+        .markdown code {
+            font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            background-color: var(--bg-secondary);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .markdown blockquote {
+            border-left: 4px solid var(--accent-color);
+            padding-left: 1rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .markdown a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .markdown a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown ul, .markdown ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar -->
     <div id="sidebar">
-        <h1>Repository Viewer</h1>
-        <p>Click to view PDFs and Markdown files</p>
+        <h2>
+            Files 
+            <button id="sidebar-toggle" aria-label="Toggle Sidebar">
+                ☰
+            </button>
+        </h2>
         <ul id="file-list"></ul>
     </div>
-    <div id="content">
-        <div id="markdown-content"></div>
-        <canvas id="pdf-viewer"></canvas>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div id="loading-spinner"></div>
     </div>
 
+    <!-- Viewer -->
+    <div id="viewer">
+        <p>Select a file to view its content.</p>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.3/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markdown.min.js"></script>
+
     <script>
-        const markdownContent = document.getElementById('markdown-content');
-        const pdfViewer = document.getElementById('pdf-viewer');
+        // Configuration
+        const CONFIG = {
+            repoOwner: "astRo210503", // Replace with your GitHub username
+            repoName: "the-end", // Replace with your repository name
+            branch: "main" // Replace with your branch name if different
+        };
 
-        // Recursive function to create file tree
-        function createFileTree(files) {
-            const fileList = document.getElementById('file-list');
-            fileList.innerHTML = '';
+        // DOM Elements
+        const elements = {
+            sidebar: document.getElementById('sidebar'),
+            fileList: document.getElementById('file-list'),
+            viewer: document.getElementById('viewer'),
+            loadingOverlay: document.getElementById('loading-overlay'),
+            sidebarToggle: document.getElementById('sidebar-toggle')
+        };
 
-            function createFileNode(file, parent) {
-                if (file.type === 'directory') {
-                    const folderLi = document.createElement('li');
-                    const folderSpan = document.createElement('span');
-                    folderSpan.textContent = file.name;
-                    folderSpan.classList.add('folder');
-                    folderLi.appendChild(folderSpan);
-
-                    const subUl = document.createElement('ul');
-                    folderLi.appendChild(subUl);
-                    parent.appendChild(folderLi);
-
-                    // Expand/collapse folder
-                    folderSpan.addEventListener('click', () => {
-                        folderSpan.classList.toggle('expanded');
-                    });
-
-                    // Process subdirectories and files
-                    file.children.forEach(child => {
-                        createFileNode(child, subUl);
-                    });
-                } else if (file.name.endsWith('.pdf') || file.name.endsWith('.md')) {
-                    const li = document.createElement('li');
-                    const link = document.createElement('a');
-                    link.textContent = file.name;
-                    link.dataset.path = file.path;
-                    link.addEventListener('click', () => viewFile(file.path));
-                    li.appendChild(link);
-                    parent.appendChild(li);
+        // Utility Functions
+        const utils = {
+            showLoading() {
+                elements.loadingOverlay.style.display = 'flex';
+            },
+            hideLoading() {
+                elements.loadingOverlay.style.display = 'none';
+            },
+            async fetchWithRetry(url, options = {}, retries = 3) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response;
+                } catch (error) {
+                    if (retries > 0) {
+                        console.warn(`Retrying fetch for ${url}. Attempts left: ${retries}`);
+                        return this.fetchWithRetry(url, options, retries - 1);
+                    }
+                    throw error;
                 }
             }
+        };
 
-            // Start creating the file tree from the root
-            files.forEach(file => createFileNode(file, fileList));
-        }
+        // GitHub API Interaction
+        const githubApi = {
+            baseUrl: () => `https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/`,
+            rawContentUrl: (path) => `https://raw.githubusercontent.com/${CONFIG.repoOwner}/${CONFIG.repoName}/${CONFIG.branch}/${path}`,
 
-        // Generate file tree structure dynamically
-        function generateFileTree() {
-            const fileTree = [];
-            
-            // This will be populated dynamically
-            const filesInRepo = [
-                {
-                    name: 'Documents',
-                    type: 'directory',
-                    children: []
+            async fetchFiles(path = "") {
+                try {
+                    const response = await utils.fetchWithRetry(this.baseUrl() + path);
+                    return response.json();
+                } catch (error) {
+                    console.error("Error fetching files:", error);
+                    return [];
                 }
-            ];
-
-            // Recursive function to build file tree
-            function buildFileTree(directory) {
-                // Use the current script's location as base
-                const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-
-                // Try to fetch directory contents
-                return fetch(baseUrl + directory)
-                    .then(response => response.text())
-                    .then(html => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const links = doc.querySelectorAll('a');
-
-                        links.forEach(link => {
-                            const href = link.getAttribute('href');
-                            
-                            // Ignore parent directory and current directory links
-                            if (href && !href.startsWith('.') && href !== '/') {
-                                const isDirectory = href.endsWith('/');
-                                const name = href.replace(/\/$/, '');
-
-                                if (isDirectory) {
-                                    // It's a directory
-                                    const dirEntry = {
-                                        name: name,
-                                        type: 'directory',
-                                        path: href,
-                                        children: []
-                                    };
-                                    filesInRepo[0].children.push(dirEntry);
-                                } else if (name.endsWith('.pdf') || name.endsWith('.md')) {
-                                    // It's a file
-                                    filesInRepo[0].children.push({
-                                        name: name,
-                                        type: 'file',
-                                        path: href
-                                    });
-                                }
-                            }
-                        });
-
-                        return filesInRepo;
-                    })
-                    .catch(error => {
-                        console.error('Error fetching directory contents:', error);
-                        return filesInRepo;
-                    });
             }
+        };
 
-            // Initial call to build the file tree
-            return buildFileTree('.');
-        }
+        // File Rendering
+        const fileRenderer = {
+            createFileElement(item) {
+                const li = document.createElement("li");
+                li.dataset.path = item.path;
 
-        // View file contents
-        async function viewFile(path) {
-            // Clear previous content
-            markdownContent.innerHTML = '';
-            pdfViewer.style.display = 'none';
+                if (item.type === "file") {
+                    if (this.isViewableFile(item.name)) {
+                        const link = document.createElement("a");
+                        link.textContent = item.name;
+                        link.href = "#";
+                        link.onclick = (e) => {
+                            e.preventDefault();
+                            this.viewFile(item);
+                        };
+                        li.appendChild(link);
+                    }
+                } else if (item.type === "dir") {
+                    li.classList.add("folder");
+                    const toggle = this.createFolderToggle();
+                    const folderName = document.createTextNode(item.name);
+                    
+                    li.appendChild(toggle);
+                    li.appendChild(folderName);
 
-            // Ensure path is a full URL
-            const fullPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1) + path;
+                    const subList = document.createElement("ul");
+                    li.appendChild(subList);
 
-            try {
-                const response = await fetch(fullPath);
+                    toggle.onclick = () => {
+                        subList.classList.toggle("active");
+                        toggle.textContent = toggle.textContent === "+" ? "-" : "+";
+                    };
+                }
+                return li;
+            },
+
+            createFolderToggle() {
+                const toggle = document.createElement("span");
+                toggle.textContent = "+";
+                toggle.classList.add("toggle");
+                return toggle;
+            },
+
+            isViewableFile(fileName) {
+                const viewableExtensions = ['.md', '.pdf', '.txt', '.html', '.js', '.css', '.json'];
+                return viewableExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
+            },
+
+            async viewFile(item) {
+                utils.showLoading();
                 
-                if (path.endsWith('.md')) {
-                    const markdown = await response.text();
-                    
-                    // Render markdown
-                    marked.setOptions({
-                        highlight: function(code, lang) {
-                            return hljs.highlightAuto(code, [lang]).value;
-                        }
-                    });
-                    
-                    markdownContent.innerHTML = marked.parse(markdown);
-                    markdownContent.style.display = 'block';
-                } else if (path.endsWith('.pdf')) {
-                    // Load PDF using PDF.js
-                    const loadingTask = pdfjsLib.getDocument(fullPath);
-                    loadingTask.promise.then(pdf => {
-                        // Render first page
-                        return pdf.getPage(1).then(page => {
-                            const viewport = page.getViewport({scale: 1.5});
-                            pdfViewer.height = viewport.height;
-                            pdfViewer.width = viewport.width;
-                            
-                            const renderContext = {
-                                canvasContext: pdfViewer.getContext('2d'),
-                                viewport: viewport
-                            };
-                            
-                            page.render(renderContext);
-                            pdfViewer.style.display = 'block';
-                            markdownContent.style.display = 'none';
-                        });
-                    });
+                // Deselect previous active item
+                const previousActive = elements.fileList.querySelector('.active');
+                if (previousActive) previousActive.classList.remove('active');
+                
+                // Mark current item as active
+                const currentItem = Array.from(elements.fileList.querySelectorAll('li'))
+                    .find(li => li.dataset.path === item.path);
+                if (currentItem) currentItem.classList.add('active');
+
+                const url = githubApi.rawContentUrl(item.path);
+
+                try {
+                    const response = await utils.fetchWithRetry(url);
+                    const content = await response.text();
+
+                    if (item.name.endsWith('.pdf')) {
+                        this.renderPDF(url);
+                    } else if (item.name.endsWith('.md')) {
+                        this.renderMarkdown(content);
+                    } else {
+                        this.renderPlainText(content, item.name);
+                    }
+                } catch (error) {
+                    console.error('Error viewing file:', error);
+                    elements.viewer.innerHTML = `<p>Error loading file: ${error.message}</p>`;
+                } finally {
+                    utils.hideLoading();
                 }
-            } catch (error) {
-                markdownContent.innerHTML = `Error loading file: ${error.message}`;
-                markdownContent.style.display = 'block';
+            },
+
+            renderPDF(url) {
+                elements.viewer.innerHTML = `
+                    <iframe 
+                        src="https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true" 
+                        allowfullscreen
+                    ></iframe>
+                `;
+            },
+
+            renderMarkdown(content) {
+                // Configure marked for syntax highlighting
+                marked.setOptions({
+                    highlight: function(code, lang) {
+                        if (Prism.languages[lang]) {
+                            return Prism.highlight(code, Prism.languages[lang], lang);
+                        }
+                        return code;
+                    }
+                });
+
+                // Sanitize and render markdown
+                const sanitizedContent = DOMPurify.sanitize(marked(content));
+                elements.viewer.innerHTML = `<div class="markdown">${sanitizedContent}</div>`;
+            },
+
+            renderPlainText(content, fileName) {
+                const extension = fileName.split('.').pop().toLowerCase();
+                const codeBlock = `<pre><code class="language-${extension}">${DOMPurify.sanitize(content)}</code></pre>`;
+                elements.viewer.innerHTML = `<div class="markdown">${codeBlock}</div>`;
+                Prism.highlightAll();
+            },
+
+            async renderFiles(path = "", parentElement = elements.fileList) {
+                const items = await githubApi.fetchFiles(path);
+                
+                items.sort((a, b) => {
+                    if (a.type === 'dir' && b.type === 'file') return -1;
+                    if (a.type === 'file' && b.type === 'dir') return 1;
+                    return a.name.localeCompare(b.name);
+                });
+
+                items.forEach(item => {
+                    const li = this.createFileElement(item);
+                    parentElement.appendChild(li);
+
+                    if (item.type === 'dir') {
+                        this.renderFiles(item.path, li.querySelector('ul'));
+                    }
+                });
             }
+        };
+
+        // Event Listeners
+        function setupEventListeners() {
+            elements.sidebarToggle.addEventListener('click', () => {
+                elements.sidebar.classList.toggle('collapsed');
+            });
         }
 
-        // Initialize
-        generateFileTree().then(fileTree => {
-            createFileTree(fileTree);
-        });
+        // Initialization
+        async function init() {
+            setupEventListeners();
+            await fileRenderer.renderFiles();
+        }
+
+        // Start the application
+        init();
     </script>
 </body>
 </html>
