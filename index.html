@@ -132,32 +132,70 @@
             files.forEach(file => createFileNode(file, fileList));
         }
 
-        // Generate file tree structure
+        // Generate file tree structure dynamically
         function generateFileTree() {
             const fileTree = [];
             
-            // This function will be replaced by a server-side generated file list
-            // For local development, you'd manually create this structure
-            const sampleTree = [
+            // This will be populated dynamically
+            const filesInRepo = [
                 {
                     name: 'Documents',
                     type: 'directory',
-                    children: [
-                        { 
-                            name: 'sample.pdf', 
-                            type: 'file', 
-                            path: 'Documents/sample.pdf' 
-                        },
-                        { 
-                            name: 'readme.md', 
-                            type: 'file', 
-                            path: 'Documents/readme.md' 
-                        }
-                    ]
+                    children: []
                 }
             ];
 
-            return sampleTree;
+            // Recursive function to build file tree
+            function buildFileTree(directory) {
+                // Use the current script's location as base
+                const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+
+                // Try to fetch directory contents
+                return fetch(baseUrl + directory)
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const links = doc.querySelectorAll('a');
+
+                        links.forEach(link => {
+                            const href = link.getAttribute('href');
+                            
+                            // Ignore parent directory and current directory links
+                            if (href && !href.startsWith('.') && href !== '/') {
+                                const isDirectory = href.endsWith('/');
+                                const name = href.replace(/\/$/, '');
+
+                                if (isDirectory) {
+                                    // It's a directory
+                                    const dirEntry = {
+                                        name: name,
+                                        type: 'directory',
+                                        path: href,
+                                        children: []
+                                    };
+                                    filesInRepo[0].children.push(dirEntry);
+                                } else if (name.endsWith('.pdf') || name.endsWith('.md')) {
+                                    // It's a file
+                                    filesInRepo[0].children.push({
+                                        name: name,
+                                        type: 'file',
+                                        path: href
+                                    });
+                                }
+                            }
+                        });
+
+                        return filesInRepo;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching directory contents:', error);
+                        return filesInRepo;
+                    });
+            }
+
+            // Initial call to build the file tree
+            return buildFileTree('.');
         }
 
         // View file contents
@@ -166,8 +204,11 @@
             markdownContent.innerHTML = '';
             pdfViewer.style.display = 'none';
 
+            // Ensure path is a full URL
+            const fullPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1) + path;
+
             try {
-                const response = await fetch(path);
+                const response = await fetch(fullPath);
                 
                 if (path.endsWith('.md')) {
                     const markdown = await response.text();
@@ -183,7 +224,7 @@
                     markdownContent.style.display = 'block';
                 } else if (path.endsWith('.pdf')) {
                     // Load PDF using PDF.js
-                    const loadingTask = pdfjsLib.getDocument(path);
+                    const loadingTask = pdfjsLib.getDocument(fullPath);
                     loadingTask.promise.then(pdf => {
                         // Render first page
                         return pdf.getPage(1).then(page => {
@@ -209,8 +250,9 @@
         }
 
         // Initialize
-        const fileTree = generateFileTree();
-        createFileTree(fileTree);
+        generateFileTree().then(fileTree => {
+            createFileTree(fileTree);
+        });
     </script>
 </body>
 </html>
