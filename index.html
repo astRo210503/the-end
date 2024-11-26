@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f9f9f9;
+            display: flex;
+        }
+        #sidebar {
+            width: 250px;
+            padding-right: 20px;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+        #content {
+            flex-grow: 1;
+            padding-left: 20px;
+            overflow: auto;
+            max-height: 100vh;
+        }
+        a {
+            text-decoration: none;
+            color: #3498db;
+            cursor: pointer;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        .folder {
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #pdf-viewer {
+            width: 100%;
+            height: 800px;
+        }
+        #markdown-content {
+            max-width: 800px;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #file-list ul {
+            display: none;
+        }
+        .folder.expanded > ul {
+            display: block;
+        }
+        .folder::before {
+            content: '▶ ';
+            display: inline-block;
+            margin-right: 5px;
+            transition: transform 0.2s;
+        }
+        .folder.expanded::before {
+            transform: rotate(90deg);
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h1>Repository Viewer</h1>
+        <p>Click to view PDFs and Markdown files</p>
+        <ul id="file-list"></ul>
+    </div>
+    <div id="content">
+        <div id="markdown-content"></div>
+        <canvas id="pdf-viewer"></canvas>
+    </div>
+
+    <script>
+        const markdownContent = document.getElementById('markdown-content');
+        const pdfViewer = document.getElementById('pdf-viewer');
+
+        // Recursive function to create file tree
+        function createFileTree(files) {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+
+            function createFileNode(file, parent) {
+                if (file.type === 'directory') {
+                    const folderLi = document.createElement('li');
+                    const folderSpan = document.createElement('span');
+                    folderSpan.textContent = file.name;
+                    folderSpan.classList.add('folder');
+                    folderLi.appendChild(folderSpan);
+
+                    const subUl = document.createElement('ul');
+                    folderLi.appendChild(subUl);
+                    parent.appendChild(folderLi);
+
+                    // Expand/collapse folder
+                    folderSpan.addEventListener('click', () => {
+                        folderSpan.classList.toggle('expanded');
+                    });
+
+                    // Process subdirectories and files
+                    file.children.forEach(child => {
+                        createFileNode(child, subUl);
+                    });
+                } else if (file.name.endsWith('.pdf') || file.name.endsWith('.md')) {
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.textContent = file.name;
+                    link.dataset.path = file.path;
+                    link.addEventListener('click', () => viewFile(file.path));
+                    li.appendChild(link);
+                    parent.appendChild(li);
+                }
+            }
+
+            // Start creating the file tree from the root
+            files.forEach(file => createFileNode(file, fileList));
+        }
+
+        // Generate file tree structure
+        function generateFileTree() {
+            const fileTree = [];
+            
+            // This function will be replaced by a server-side generated file list
+            // For local development, you'd manually create this structure
+            const sampleTree = [
+                {
+                    name: 'Documents',
+                    type: 'directory',
+                    children: [
+                        { 
+                            name: 'sample.pdf', 
+                            type: 'file', 
+                            path: 'Documents/sample.pdf' 
+                        },
+                        { 
+                            name: 'readme.md', 
+                            type: 'file', 
+                            path: 'Documents/readme.md' 
+                        }
+                    ]
+                }
+            ];
+
+            return sampleTree;
+        }
+
+        // View file contents
+        async function viewFile(path) {
+            // Clear previous content
+            markdownContent.innerHTML = '';
+            pdfViewer.style.display = 'none';
+
+            try {
+                const response = await fetch(path);
+                
+                if (path.endsWith('.md')) {
+                    const markdown = await response.text();
+                    
+                    // Render markdown
+                    marked.setOptions({
+                        highlight: function(code, lang) {
+                            return hljs.highlightAuto(code, [lang]).value;
+                        }
+                    });
+                    
+                    markdownContent.innerHTML = marked.parse(markdown);
+                    markdownContent.style.display = 'block';
+                } else if (path.endsWith('.pdf')) {
+                    // Load PDF using PDF.js
+                    const loadingTask = pdfjsLib.getDocument(path);
+                    loadingTask.promise.then(pdf => {
+                        // Render first page
+                        return pdf.getPage(1).then(page => {
+                            const viewport = page.getViewport({scale: 1.5});
+                            pdfViewer.height = viewport.height;
+                            pdfViewer.width = viewport.width;
+                            
+                            const renderContext = {
+                                canvasContext: pdfViewer.getContext('2d'),
+                                viewport: viewport
+                            };
+                            
+                            page.render(renderContext);
+                            pdfViewer.style.display = 'block';
+                            markdownContent.style.display = 'none';
+                        });
+                    });
+                }
+            } catch (error) {
+                markdownContent.innerHTML = `Error loading file: ${error.message}`;
+                markdownContent.style.display = 'block';
+            }
+        }
+
+        // Initialize
+        const fileTree = generateFileTree();
+        createFileTree(fileTree);
+    </script>
+</body>
+</html>
