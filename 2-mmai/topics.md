@@ -1,9 +1,14 @@
 
+alter - https://chat.mistral.ai/chat/b1005afd-344e-4622-8dc2-15d6a0d31c93
+
+alter2 - https://chat.mistral.ai/chat/4aff2318-ef4d-467a-b66e-7a2035821cb4
+
+
+
 # Unit 1 
 
 ### **1. Introduction to Multimodal AI**
 
-alter - https://chat.mistral.ai/chat/b1005afd-344e-4622-8dc2-15d6a0d31c93
 
 
 
@@ -380,8 +385,6 @@ This structure ensures a logical progression from concepts to advanced applicati
 
 # Unit 4
 
-Here’s an outline of the topics and subtopics from the provided document:
-
 ----------
 
 ## Module IV: Multimodal Fusion & Co-Learning
@@ -462,5 +465,5 @@ Here’s an outline of the topics and subtopics from the provided document:
 
 Let me know if you need this refined or expanded further!
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTM4NDY4NzE5NSwxNzU3NDcyMTE1XX0=
+eyJoaXN0b3J5IjpbMzU1NzY4NTg1LDE3NTc0NzIxMTVdfQ==
 -->
