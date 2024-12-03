@@ -74,48 +74,6 @@ graph TD
 These Mermaid diagrams should help visualize the key concepts and components discussed in the Big Data Analytics course. You can copy and paste these diagrams into any Markdown editor that supports Mermaid to view them.
 
 
-```mermaid
-% Diagram 1: Types of Big Data Analytics
-stateDiagram-v2
-    [*] --> DescriptiveAnalytics : What Happened?
-    DescriptiveAnalytics --> DiagnosticAnalytics : Why Did It Happen?
-    DiagnosticAnalytics --> PredictiveAnalytics : What Will Happen?
-    PredictiveAnalytics --> PrescriptiveAnalytics : What Should We Do?
-    PrescriptiveAnalytics --> [*]
-
-% Diagram 2: Hadoop Ecosystem
-flowchart TB
-    Hadoop --> HDFS[HDFS\nDistributed File System]
-    Hadoop --> YARN[YARN\nResource Management]
-    Hadoop --> MapReduce[MapReduce\nData Processing]
-    Hadoop --> HadoopCommon[Hadoop Common\nSupport Libraries]
-
-    HDFS --> BlockDistribution[Block Distribution\nAcross Nodes]
-    YARN --> JobScheduling[Job Scheduling]
-    MapReduce --> ParallelProcessing[Parallel Data Processing]
-
-% Diagram 3: Types of Data
-flowchart LR
-    Data --> StructuredData[Structured Data\nOrganized, Searchable]
-    Data --> UnstructuredData[Unstructured Data\nNo Predefined Format]
-    Data --> SemiStructuredData[Semi-Structured Data\nPartially Organized]
-
-    StructuredData --> Databases[(Databases)]
-    UnstructuredData --> TextFiles[Text Files]
-    UnstructuredData --> SocialMedia[Social Media Posts]
-    SemiStructuredData --> XMLFiles[XML Files]
-    SemiStructuredData --> JSONFiles[JSON Files]
-
-% Diagram 4: Big Data Characteristics
-flowchart TB
-    BigData --> Volume[High Volume\nLarge Amount of Data]
-    BigData --> Velocity[High Velocity\nRapid Data Generation]
-    BigData --> Variety[High Variety\nDifferent Data Types]
-
-    Volume --> DataSources[Multiple Data Sources]
-    Velocity --> RealTimeProcessing[Real-time Processing]
-    Variety --> StructuredUnstructured[Structured & Unstructured Data]
-```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTgyNTM0MDI4MF19
+eyJoaXN0b3J5IjpbMTkzMDUyMTQwM119
 -->
